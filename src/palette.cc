@@ -19,17 +19,19 @@
 */
 
 #include "tilemancer/palette.h"
+#include <SDL_image.h>
+#include <SDL_surface.h>
 #include <cmath>
 #include <cstdlib>
-#include <cstdio>
 #include "tilemancer/color.h"
 #include "tilemancer/cpoint.h"
 #include "tilemancer/effect.h"
+#include "tilemancer/gl.h"
 #include "tilemancer/globals.h"
+#include "tilemancer/graphics_globals.h"
 #include "tilemancer/parameter.h"
 #include "tilemancer/texture.h"
-#include "tilemancer/gl.h"
-#include "tilemancer/graphics_globals.h"
+#include "tilemancer/image.h"
 
 Color* getPalColor(float H, float S, float V) {
   float C = V * S;
@@ -228,29 +230,10 @@ void loadPalette() {
 }
 
 void exportPalette(const std::string& dir) {
-  FILE* file = fopen(dir.c_str(), "rb");
-
-  if (file == nullptr) {
-    errorMessage += "Unable to write to palette file " + dir + "\n";
-  }
-
-  const int size = 8 + (palette.size() * 3);
-  const short magic = 0xB123;
-  const short version = 0;
-
-  fwrite(&size, 4, 1, file);
-  fwrite(&magic, 2, 1, file);
-  fwrite(&version, 2, 1, file);
-
-  unsigned char rgb[3];
-
-  for (Color* color : palette) {
-    rgb[0] = (unsigned char)(color->r);
-    rgb[1] = (unsigned char)(color->g);
-    rgb[2] = (unsigned char)(color->b);
-    fwrite(&color, 1, 3, file);
-  }
-
-  fclose(file);
+  const int WIDTH = 16;
+  const int HEIGHT = 16;
+  std::vector<unsigned char> pixels(WIDTH * HEIGHT * 3, 0);
+  glBindTexture(GL_TEXTURE_2D, palImgReal);
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, &pixels[0]);
+  SaveImage(dir, pixels, WIDTH, HEIGHT, AlphaSave::HasNot);
 }
-
