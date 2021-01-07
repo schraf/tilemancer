@@ -22,6 +22,7 @@
 #define TILEMANCER_SOCKET_H
 
 #include <vector>
+#include <string>
 
 #include "tilemancer/floatimage.h"
 #include "tilemancer/gl.h"

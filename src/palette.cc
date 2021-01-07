@@ -21,6 +21,7 @@
 #include "tilemancer/palette.h"
 #include <cmath>
 #include <cstdlib>
+#include <cstdio>
 #include "tilemancer/color.h"
 #include "tilemancer/cpoint.h"
 #include "tilemancer/effect.h"
@@ -227,11 +228,29 @@ void loadPalette() {
 }
 
 void exportPalette(const std::string& dir) {
-  SDL_Surface* surface = SDL_CreateRGBSurface(
-      SDL_SWSURFACE, 16, 16, 24, 0x000000FF, 0x0000FF00, 0x00FF0000, 0);
-  glBindTexture(GL_TEXTURE_2D, palImgReal);
-  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, surface->pixels);
-  IMG_SavePNG(surface, dir.c_str());
-  SDL_FreeSurface(surface);
+  FILE* file = fopen(dir.c_str(), "rb");
+
+  if (file == nullptr) {
+    errorMessage += "Unable to write to palette file " + dir + "\n";
+  }
+
+  const int size = 8 + (palette.size() * 3);
+  const short magic = 0xB123;
+  const short version = 0;
+
+  fwrite(&size, 4, 1, file);
+  fwrite(&magic, 2, 1, file);
+  fwrite(&version, 2, 1, file);
+
+  unsigned char rgb[3];
+
+  for (Color* color : palette) {
+    rgb[0] = (unsigned char)(color->r);
+    rgb[1] = (unsigned char)(color->g);
+    rgb[2] = (unsigned char)(color->b);
+    fwrite(&color, 1, 3, file);
+  }
+
+  fclose(file);
 }
 

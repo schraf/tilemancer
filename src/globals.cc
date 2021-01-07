@@ -27,8 +27,8 @@ double accumulator;
 unsigned int fps;
 int fpsTimer;
 
-float texSizeX;
-float texSizeY;
+int texSizeX;
+int texSizeY;
 int screenW;
 int screenH;
 int displayW;

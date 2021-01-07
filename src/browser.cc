@@ -128,7 +128,7 @@ void browserAction(std::string dir, std::string subDir, std::string parent) {
 }
 
 #ifdef _WIN32
-void openBrowser(std::string dir, int type, int mode) {
+void openBrowser(std::string dir, int type, BrowserMode mode) {
   overwrite = false;
   browserMode = mode;
   browserScroll = 0;
@@ -145,21 +145,21 @@ void openBrowser(std::string dir, int type, int mode) {
   selectedFile = -1;
   currentDir = dir;
   filenameB = "";
-  if (browserMode == 1 && lastPalDir.size() > 0 && !browserOpen) {
+  if (browserMode == BrowserMode::e4Open && lastPalDir.size() > 0 && !browserOpen) {
     currentDir = lastPalDir;
     filenameB = lastPalName;
   }
   Texture* t = texs.at(currentTexture);
-  if (browserMode == 2 && currentSocket->lastTexDir.size() > 0 &&
+  if (browserMode == BrowserMode::e2ExportTex && currentSocket->lastTexDir.size() > 0 &&
       !browserOpen) {
     currentDir = currentSocket->lastTexDir;
     filenameB = currentSocket->lastTexName;
   }
-  if (browserMode == 3 && lastTexDir.size() > 0 && !browserOpen) {
+  if (browserMode == BrowserMode::e0Import && lastTexDir.size() > 0 && !browserOpen) {
     currentDir = lastTexDir;
     filenameB = lastTexName;
   }
-  if (browserMode == 5 && lastSaveDir.size() > 0 && !browserOpen) {
+  if (browserMode == BrowserMode::e3 && lastSaveDir.size() > 0 && !browserOpen) {
     currentDir = lastSaveDir;
     filenameB = lastSaveName;
   }

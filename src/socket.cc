@@ -22,8 +22,6 @@
 #include "tilemancer/bezier.h"
 #include "tilemancer/globals.h"
 
-#include "dirent.h"
-
 Socket::Socket() {
   futureN = -1;
   futureS = -1;

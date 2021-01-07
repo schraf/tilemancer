@@ -1,5 +1,4 @@
 
-
 add_executable(tilemancer
     bezier.cc
     bpoint.cc
