@@ -19,10 +19,7 @@
 */
 
 #include "tilemancer/palette.h"
-#include <SDL_image.h>
-#include <SDL_surface.h>
-#include <cmath>
-#include <cstdlib>
+
 #include "tilemancer/color.h"
 #include "tilemancer/cpoint.h"
 #include "tilemancer/effect.h"
@@ -32,6 +29,9 @@
 #include "tilemancer/parameter.h"
 #include "tilemancer/texture.h"
 #include "tilemancer/image.h"
+
+#include <cmath>
+#include <cstdlib>
 
 Color* getPalColor(float H, float S, float V) {
   float C = V * S;

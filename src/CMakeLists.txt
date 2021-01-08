@@ -11,6 +11,7 @@ add_executable(tilemancer
     floatimage.cc
     globals.cc
     graphics_globals.cc
+    image.cc
     load_texture.cc
     main.cc
     math.cc
@@ -18,6 +19,7 @@ add_executable(tilemancer
     parameter.cc
     render.cc
     saveload.cc
+    shaders.cc
     socket.cc
     stringutils.cc
     texture.cc
@@ -32,18 +34,20 @@ set_target_properties(tilemancer
                       RELEASE_OUTPUT_NAME "tilemancer"
                       )
 
-target_include_directories(tilemancer PRIVATE
+target_include_directories(tilemancer PUBLIC
     ../include
     ../external/glew/include
-    ../external/sdl2/include)
+    ../external/sdl2/include
+    ../external/glm/include
+    ../external/lua/src
+    ../external/stb
+    ../external/tinydir)
 
 target_link_libraries(tilemancer
                       ${CMAKE_THREAD_LIBS_INIT}
                       ${CMAKE_DL_LIBS}
                       ${OPENGL_LIBRARIES}
-                      sdl2
-                      glm
-                      glew
+                      SDL2main SDL2-static
+                      glew_s
                       lua
-                      stb
                       )

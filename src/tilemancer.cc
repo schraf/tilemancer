@@ -18,7 +18,25 @@
 
 */
 
-#include "tilemancer/os.h"
+#include "tilemancer/bezier.h"
+#include "tilemancer/color.h"
+#include "tilemancer/cpoint.h"
+#include "tilemancer/drag.h"
+#include "tilemancer/effect.h"
+#include "tilemancer/browser.h"
+#include "tilemancer/globals.h"
+#include "tilemancer/math.h"
+#include "tilemancer/palette.h"
+#include "tilemancer/parameter.h"
+#include "tilemancer/render.h"
+#include "tilemancer/saveload.h"
+#include "tilemancer/shaders.h"
+#include "tilemancer/socket.h"
+#include "tilemancer/text.h"
+#include "tilemancer/texture.h"
+#include "tilemancer/undoredo.h"
+#include "tilemancer/load_texture.h"
+#include "tilemancer/graphics_globals.h"
 
 #define _USE_MATH_DEFINES
 #include <cmath>
@@ -36,30 +54,11 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtx/transform.hpp"
 #include "lua.hpp"
-
-#include "tilemancer/bezier.h"
-#include "tilemancer/color.h"
-#include "tilemancer/cpoint.h"
-#include "tilemancer/drag.h"
-#include "tilemancer/effect.h"
-#include "tilemancer/browser.h"
-#include "tilemancer/globals.h"
-#include "tilemancer/math.h"
-#include "tilemancer/palette.h"
-#include "tilemancer/parameter.h"
-#include "tilemancer/render.h"
-#include "tilemancer/saveload.h"
-#include "tilemancer/socket.h"
-#include "tilemancer/text.h"
-#include "tilemancer/texture.h"
-#include "tilemancer/undoredo.h"
-#include "tilemancer/load_texture.h"
-#include "tilemancer/graphics_globals.h"
+#include "tinydir.h"
 
 using namespace std;
 
 SDL_Window* window = NULL;
-SDL_Renderer* gRenderer = NULL;
 
 class Layer;
 
@@ -71,12 +70,12 @@ void initLua() {
 static string executable_path() {
   char cwd[1024];
   uint32_t size = sizeof(cwd);
-#if defined(__WIN32)
+#ifdef _WIN32
   GetModuleFileName(NULL, cwd, size);
 #elif defined(__APPLE__)
   _NSGetExecutablePath(cwd, &size);
 #else
-  ssize_t readSize = readlink("/proc/self/exe", cwd, size);
+  size_t readSize = readlink("/proc/self/exe", cwd, size);
   if (readSize <= 0 || readSize == size) {
     printf("Could not determine executable path!\n");
     exit(1);
@@ -86,7 +85,6 @@ static string executable_path() {
   return string(cwd);
 }
 
-#ifdef _WIN32
 void importFxs() {
   string cwd2 = executable_path();
   cwd2.erase(cwd2.rfind('\\'));
@@ -95,13 +93,17 @@ void importFxs() {
   } else {
     cwd2 += "\\Nodes";
   }
-  DIR* dirr;
-  struct dirent* ent;
+
+  tinydir_dir dirr;
   vector<BrowserFile*> temp;
-  if ((dirr = opendir(cwd2.c_str())) != NULL) {
-    while ((ent = readdir(dirr)) != NULL) {
-      if (ent->d_name[0] != '.') {
-        string fn = ent->d_name;
+
+  if (tinydir_open(&dirr, cwd2.c_str()) == 0) {
+    while (dirr.has_next) {
+      tinydir_file file;
+      tinydir_readfile(&dirr, &file);
+
+      if (file.name[0] != '.') {
+        string fn = file.name;
         if (fn.substr(fn.find_last_of(".") + 1) == "lua") {
           string fullfn = cwd2 + "\\" + fn;
           lua_settop(L, 0);
@@ -130,8 +132,9 @@ void importFxs() {
           }
         }
       }
+      tinydir_next(&dirr);
     }
-    closedir(dirr);
+    tinydir_close(&dirr);
   } else {
   }
 }
@@ -144,13 +147,17 @@ void importPresets() {
   } else {
     cwd2 += "\\Presets";
   }
-  DIR* dirr;
-  struct dirent* ent;
+
+  tinydir_dir dirr;
   vector<BrowserFile*> temp;
-  if ((dirr = opendir(cwd2.c_str())) != NULL) {
-    while ((ent = readdir(dirr)) != NULL) {
-      if (ent->d_name[0] != '.') {
-        string fn = ent->d_name;
+
+  if (tinydir_open(&dirr, cwd2.c_str()) == 0) {
+    while (dirr.has_next) {
+      tinydir_file file;
+      tinydir_readfile(&dirr, &file);
+
+      if (file.name[0] != '.') {
+        string fn = file.name;
         if (fn.substr(fn.find_last_of(".") + 1) == "lua") {
           string fullfn = cwd2 + "\\" + fn;
           lua_settop(L, 0);
@@ -179,116 +186,12 @@ void importPresets() {
           }
         }
       }
+      tinydir_next(&dirr);
     }
-    closedir(dirr);
+    tinydir_close(&dirr);
   } else {
   }
 }
-#elif defined(__APPLE__) || defined(__linux__)
-void importFxs() {
-  string cwd2 = executable_path();
-  cwd2.erase(cwd2.rfind('/'));
-#if defined(__APPLE__)
-  cwd2.erase(cwd2.rfind('/'));
-  cwd2.erase(cwd2.rfind('/'));
-  cwd2.erase(cwd2.rfind('/'));
-#endif
-  if (cwd2.size() < 1) {
-    cwd2 = "/Nodes";
-  } else {
-    cwd2 += "/Nodes";
-  }
-
-  int num_entries;
-  struct dirent** entries = NULL;
-  num_entries = scandir(cwd2.c_str(), &entries, NULL, NULL);
-
-  for (int i = 0; i < num_entries; i++) {
-    if (entries[i]->d_name[0] != '.') {
-      string fn = entries[i]->d_name;
-      if (fn.substr(fn.find_last_of(".") + 1) == "lua") {
-        string fullfn = cwd2 + "/" + fn;
-        lua_settop(L, 0);
-        lua_pushnil(L);
-        lua_setglobal(L, "init");
-        lua_settop(L, 0);
-        lua_pushnil(L);
-        lua_setglobal(L, "apply");
-        int s = luaL_dofile(L, fullfn.c_str());
-        if (s == 0) {
-          // cout << "Loaded" << endl;
-          // checking if everything works
-          bool OK = true;
-          lua_getglobal(L, "init");
-          lua_getglobal(L, "apply");
-          if (!lua_isfunction(L, -2)) {
-            OK = false;
-          }
-          if (!lua_isfunction(L, -1)) {
-            OK = false;
-          }
-          if (OK) {
-            // cout << "Success" << endl;
-            newEffects.push_back(new Effect(fullfn, fn));
-          }
-        }
-      }
-    }
-  }
-}
-void importPresets() {
-  string cwd2 = executable_path();
-  cwd2.erase(cwd2.rfind('/'));
-#if defined(__APPLE__)
-  cwd2.erase(cwd2.rfind('/'));
-  cwd2.erase(cwd2.rfind('/'));
-  cwd2.erase(cwd2.rfind('/'));
-#endif
-  if (cwd2.size() < 1) {
-    cwd2 = "/Presets";
-  } else {
-    cwd2 += "/Presets";
-  }
-
-  int num_entries;
-  struct dirent** entries = NULL;
-  num_entries = scandir(cwd2.c_str(), &entries, NULL, NULL);
-
-  for (int i = 0; i < num_entries; i++) {
-    if (entries[i]->d_name[0] != '.') {
-      string fn = entries[i]->d_name;
-      if (fn.substr(fn.find_last_of(".") + 1) == "lua") {
-        string fullfn = cwd2 + "/" + fn;
-        lua_settop(L, 0);
-        lua_pushnil(L);
-        lua_setglobal(L, "init");
-        lua_settop(L, 0);
-        lua_pushnil(L);
-        lua_setglobal(L, "apply");
-        int s = luaL_dofile(L, fullfn.c_str());
-        if (s == 0) {
-          // cout << "Loaded" << endl;
-          // checking if everything works
-          bool OK = true;
-          lua_getglobal(L, "init");
-          lua_getglobal(L, "apply");
-          if (!lua_isfunction(L, -2)) {
-            OK = false;
-          }
-          if (!lua_isfunction(L, -1)) {
-            OK = false;
-          }
-          if (OK) {
-            // cout << "Success" << endl;
-            newEffects.push_back(new Effect(fullfn, fn, true));
-          }
-        }
-      }
-    }
-  }
-}
-#else
-#endif
 
 void getHome();
 
@@ -426,6 +329,7 @@ void loadGen() {
 }
 
 void initGL() {
+  glewInit();
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -434,15 +338,6 @@ void initGL() {
   proj = glm::ortho(0.0, (double)screenW * screenScale,
                     (double)screenH * screenScale, 0.0, -1.0, 1.0);
 }
-
-
-
-#ifdef _WIN32
-void initGlew() {
-  glewExperimental = GL_TRUE;
-  glewInit();
-}
-#endif
 
 void LoadStuff() {
   srand(time(NULL));
@@ -875,14 +770,9 @@ void update() {
           Socket* output = fx->outputs.at(out);
           glGenTextures(1, &output->texture);
           glBindTexture(GL_TEXTURE_2D, output->texture);
-          if (OS & Windows) {
-            vector<GLubyte> bv = output->texData.toByteArray();
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texSizeX, texSizeY, 0,
-                         GL_RGBA, GL_UNSIGNED_BYTE, &bv[0]);
-          } else if (OS & Unix) {
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, texSizeX, texSizeY, 0,
-                         GL_RGBA, GL_FLOAT, output->texData.ptr());
-          }
+          vector<GLubyte> bv = output->texData.toByteArray();
+          glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texSizeX, texSizeY, 0,
+                        GL_RGBA, GL_UNSIGNED_BYTE, &bv[0]);
           glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
           glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
           glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -1585,8 +1475,8 @@ int tilemancer_main() {
       if (e.type == SDL_KEYUP) {
       }
     }
-    SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
-    SDL_RenderClear(gRenderer);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
     double newTime = 0;
     newTime = SDL_GetTicks();
     double frameTime = (newTime - currentTime) / 1000.0;
@@ -1935,10 +1825,8 @@ void onMouseMotion(const SDL_Event& e) {
     int sw = 0;
     int sh = 0;
     SDL_GetWindowPosition(window, &sx, &sy);
-    if (OS & Windows) {
-      mx += sx;
-      my += sy;
-    }
+    mx += sx;
+    my += sy;
     SDL_GetWindowSize(window, &sw, &sh);
     while (mx < sx) {
       mx += sw;

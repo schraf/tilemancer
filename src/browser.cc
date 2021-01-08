@@ -20,8 +20,6 @@
 
 #include "tilemancer/browser.h"
 
-#include <vector>
-
 #include "tilemancer/globals.h"
 #include "tilemancer/graphics_globals.h"
 #include "tilemancer/browserfile.h"
@@ -30,6 +28,10 @@
 #include "tilemancer/palette.h"
 #include "tilemancer/render.h"
 #include "tilemancer/load_texture.h"
+
+#include "tinydir.h"
+
+#include <vector>
 
 namespace {
   BrowserMode browserMode = BrowserMode::e5Save;
@@ -61,11 +63,7 @@ void browserAction(std::string dir, std::string subDir, std::string parent) {
   }
   if (browserMode == BrowserMode::e0Import) {
     if (exists) {
-      if (OS & Windows) {
-        palImg = loadTexture2(dir);
-      } else if (OS & Unix) {
-        palImg = loadTexture(dir);
-      }
+      palImg = loadTexture(dir);
       loadPalette();
       browserOpen = false;
       fnUndo.clear();
@@ -168,46 +166,31 @@ void openBrowser(std::string dir, int type, BrowserMode mode) {
   }
   filenames.clear();
 
-  DIR* dirr;
-  struct dirent* ent;
-  vector<BrowserFile*> temp;
-  if ((dirr = opendir(currentDir.c_str())) != NULL) {
-    while ((ent = readdir(dirr)) != NULL) {
-      if (ent->d_name[0] != '.') {
+  tinydir_dir dirr;
+  std::vector<BrowserFile*> temp;
+
+  if (tinydir_open(&dirr, currentDir.c_str()) == 0) {
+    while (dirr.has_next) {
+      tinydir_file file;
+      tinydir_readfile(&dirr, &file);
+
+      if (file.name[0] != '.') {
         std::string fullDir = currentDir;
         fullDir = fullDir.append("\\");
-        fullDir = fullDir.append(std::string(ent->d_name));
-        struct stat path_stat;
-        stat(fullDir.c_str(), &path_stat);
-        BrowserFile* a = new BrowserFile(std::string(ent->d_name), !S_ISREG(path_stat.st_mode));
+        fullDir = fullDir.append(std::string(file.name));
+        BrowserFile* a = new BrowserFile(std::string(file.name), file.is_dir);
         if (a->folder) {
           filenames.push_back(a);
         } else {
-          bool compatible = true;
-          // SDL_RWops *rwop = SDL_RWFromFile(fullDir.c_str(), "rb");
-          /*compatible = compatible | IMG_isBMP(rwop);
-           compatible = compatible | IMG_isCUR(rwop);
-           compatible = compatible | IMG_isGIF(rwop);
-           compatible = compatible | IMG_isICO(rwop);
-           compatible = compatible | IMG_isJPG(rwop);
-           compatible = compatible | IMG_isLBM(rwop);
-           compatible = compatible | IMG_isPCX(rwop);
-           compatible = compatible | IMG_isPNG(rwop);
-           compatible = compatible | IMG_isPNM(rwop);
-           compatible = compatible | IMG_isTIF(rwop);
-           compatible = compatible | IMG_isWEBP(rwop);
-           compatible = compatible | IMG_isXCF(rwop);
-           compatible = compatible | IMG_isXPM(rwop);
-           compatible = compatible | IMG_isXV(rwop);*/
-          if (compatible) {
-            temp.push_back(a);
-          }
+          temp.push_back(a);
         }
       }
+
+      tinydir_next(&dirr);
     }
-    closedir(dirr);
-  } else {
+    tinydir_close(&dirr);
   }
+
   filenames.insert(filenames.end(), temp.begin(), temp.end());
   browserOpen = true;
 }
@@ -495,11 +478,7 @@ void browserButtonDown(int x, int y) {
               if (doubleClickTimer <= 20 && selectedFile == i) {
                 std::string fullDir = currentDir;
                 if (fullDir.size() != 1) {
-                  if (OS & Windows) {
-                    fullDir = fullDir.append("\\");
-                  } else if (OS & Unix) {
-                    fullDir = fullDir.append("/");
-                  }
+                  fullDir = fullDir.append("/");
                 }
                 fullDir = fullDir.append(std::string(filenames.at(i)->name));
                 if (filenames.at(i)->folder) {
@@ -574,17 +553,9 @@ void browserButtonDown(int x, int y) {
             y < bSpace + tS + 8) {
           // up
           std::string newDir = currentDir;
-          if (OS & Windows) {
-            newDir.erase(newDir.rfind('\\'));
-          } else if (OS & Unix) {
-            newDir.erase(newDir.rfind('/'));
-          }
+          newDir.erase(newDir.rfind('/'));
           if (newDir.size() < 1) {
-            if (OS & Windows) {
-              newDir = "\\";
-            } else if (OS & Unix) {
-              newDir = "/";
-            }
+            newDir = "/";
           }
           openBrowser(newDir, 0, browserMode);
         }
@@ -601,11 +572,7 @@ void browserButtonDown(int x, int y) {
           // action
           std::string fullDir = currentDir;
           if (fullDir.size() != 1) {
-            if (OS & Windows) {
-              fullDir = fullDir.append("\\");
-            } else if (OS & Unix) {
-              fullDir = fullDir.append("/");
-            }
+            fullDir = fullDir.append("/");
           }
           fullDir = fullDir.append(filenameB);
           bool folder = false;

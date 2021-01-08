@@ -44,6 +44,6 @@ enum class AlphaSave {
 };
 
 ImageLoadResult LoadImage(const std::string& path, AlphaLoad alpha);
-std::string SaveImage(const std::string& path, const std::vector<unsigned char>& pixels, int width, int height, AlphaSave alpha);
+bool SaveImage(const std::string& path, const std::vector<unsigned char>& pixels, int width, int height, AlphaSave alpha);
 
 #endif  // TILEMANCER_IMAGE_H

@@ -92,5 +92,6 @@ ImageLoadResult LoadImage(const std::string& path, AlphaLoad alpha) {
   return result;
 }
 
-std::string SaveImage(const std::string& path, const std::vector<unsigned char>& pixels, int width, int height, AlphaSave has_alpha) {
+bool SaveImage(const std::string& path, const std::vector<unsigned char>& pixels, int width, int height, AlphaSave has_alpha) {
+  return false;
 }
