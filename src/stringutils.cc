@@ -20,6 +20,7 @@
 
 #include "tilemancer/stringutils.h"
 #include <sstream>
+#include <cstring>
 
 std::vector<std::string>& split(const std::string& s, char delim,
                                 std::vector<std::string>& elems) {
@@ -35,4 +36,20 @@ std::vector<std::string> split(const std::string& s, char delim) {
   std::vector<std::string> elems;
   split(s, delim, elems);
   return elems;
+}
+
+void fixPath(char* path) {
+  char buf[1024];
+  int j = 0;
+
+  for (int i = 0; path[i] != '\0'; ++i) {
+    if (path[i] == '\\') {
+      buf[j++] = '/';
+    } else {
+      buf[j++] = path[i];
+    }
+  }
+
+  buf[j] = 0;
+  strncpy(path, buf, j);
 }

@@ -25,6 +25,7 @@
 #include "tilemancer/browserfile.h"
 #include "tilemancer/socket.h"
 #include "tilemancer/saveload.h"
+#include "tilemancer/stringutils.h"
 #include "tilemancer/palette.h"
 #include "tilemancer/render.h"
 #include "tilemancer/load_texture.h"
@@ -125,7 +126,6 @@ void browserAction(std::string dir, std::string subDir, std::string parent) {
   }
 }
 
-#ifdef _WIN32
 void openBrowser(std::string dir, int type, BrowserMode mode) {
   overwrite = false;
   browserMode = mode;
@@ -176,7 +176,7 @@ void openBrowser(std::string dir, int type, BrowserMode mode) {
 
       if (file.name[0] != '.') {
         std::string fullDir = currentDir;
-        fullDir = fullDir.append("\\");
+        fullDir = fullDir.append("/");
         fullDir = fullDir.append(std::string(file.name));
         BrowserFile* a = new BrowserFile(std::string(file.name), file.is_dir);
         if (a->folder) {
@@ -196,93 +196,11 @@ void openBrowser(std::string dir, int type, BrowserMode mode) {
 }
 
 void getHome() {
-  const char* homeDir;
-  homeDir = getenv("HOMEPATH");
-  currentDir = homeDir;
+  char cwd[1024];
+  strncpy(cwd, SDL_GetPrefPath("schraf", "tilemancer"), sizeof(cwd));
+  fixPath(cwd);
+  currentDir = cwd;
 }
-
-#elif defined(__APPLE__) || defined(__linux__)
-void openBrowser(std::string dir, int type, BrowserMode mode) {
-  overwrite = false;
-  browserMode = mode;
-  browserScroll = 0;
-  if (type == 1) {  // undo
-    fnUndo.pop_back();
-    fnRedo.push_back(currentDir);
-  } else if (type == 2) {  // redo
-    fnRedo.pop_back();
-    fnUndo.push_back(currentDir);
-  } else {
-    fnUndo.push_back(currentDir);
-    fnRedo.clear();
-  }
-  selectedFile = -1;
-  currentDir = dir;
-  filenameB = "";
-  if (browserMode == BrowserMode::e1Export && lastPalDir.size() > 0 && !browserOpen) {
-    currentDir = lastPalDir;
-    filenameB = lastPalName;
-  }
-  Texture* t = texs.at(currentTexture);
-  if (browserMode == BrowserMode::e2ExportTex && currentSocket->lastTexDir.size() > 0 &&
-      !browserOpen) {
-    currentDir = currentSocket->lastTexDir;
-    filenameB = currentSocket->lastTexName;
-  }
-  if (browserMode == BrowserMode::e3 && lastTexDir.size() > 0 && !browserOpen) {
-    currentDir = lastTexDir;
-    filenameB = lastTexName;
-  }
-  if (browserMode == BrowserMode::e5Save && lastSaveDir.size() > 0 && !browserOpen) {
-    currentDir = lastSaveDir;
-    filenameB = lastSaveName;
-  }
-  for (int toDel = 0; toDel < filenames.size(); toDel++) {
-    delete filenames.at(toDel);
-  }
-  filenames.clear();
-  int num_entries;
-  struct dirent** entries = NULL;
-  num_entries = scandir(currentDir.c_str(), &entries, NULL, NULL);
-  std::vector<BrowserFile*> temp;
-  for (int i = 0; i < num_entries; i++) {
-    if (entries[i]->d_name[0] != '.') {
-      std::string fullDir = currentDir;
-      fullDir = fullDir.append("/");
-      fullDir = fullDir.append(std::string(entries[i]->d_name));
-      struct stat path_stat;
-      stat(fullDir.c_str(), &path_stat);
-      BrowserFile* a =
-          new BrowserFile(std::string(entries[i]->d_name), !S_ISREG(path_stat.st_mode));
-      if (a->folder) {
-        filenames.push_back(a);
-      } else {
-        temp.push_back(a);
-      }
-    }
-  }
-  filenames.insert(filenames.end(), temp.begin(), temp.end());
-  for (int i = 0; i < num_entries; i++) {
-    free(entries[i]);
-  }
-  free(entries);
-  browserOpen = true;
-}
-
-void getHome() {
-  char* homeDir;
-  homeDir = getenv("HOME");
-  if (!homeDir) {
-    struct passwd* pwd = getpwuid(getuid());
-    if (pwd) {
-      homeDir = pwd->pw_dir;
-    }
-  }
-  currentDir = homeDir;
-}
-
-#else
-#endif
 
 void onBrowserResize() {
   adjustBrowserScroll(0.0f);

@@ -24,8 +24,10 @@
 #include <iostream>
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_FAILURE_USERMSG
 #include "stb_image.h"
+#include "stb_image_write.h"
 
 unsigned char Select(int ch, unsigned char a, unsigned char b, unsigned char c, unsigned char d) {
   switch(ch) {
@@ -93,5 +95,24 @@ ImageLoadResult LoadImage(const std::string& path, AlphaLoad alpha) {
 }
 
 bool SaveImage(const std::string& path, const std::vector<unsigned char>& pixels, int width, int height, AlphaSave has_alpha) {
+  if (path.length() < 4) {
+    return false;
+  }
+
+  const int channels = has_alpha == AlphaSave::Has ? 4 : 3;
+  std::string ext = path.substr(path.length() - 4, 4);
+
+  if (ext == ".png") {
+     return stbi_write_png(path.c_str(), width, height, channels, pixels.data(), width * channels) != 0;
+  }
+
+  if (ext == ".bmp") {
+     return stbi_write_bmp(path.c_str(), width, height, channels, pixels.data()) != 0;
+  }
+
+  if (ext == ".tga") {
+    return stbi_write_tga(path.c_str(), width, height, channels, pixels.data()) != 0;
+  }
+
   return false;
 }

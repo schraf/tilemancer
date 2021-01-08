@@ -32,6 +32,7 @@
 #include "tilemancer/saveload.h"
 #include "tilemancer/shaders.h"
 #include "tilemancer/socket.h"
+#include "tilemancer/stringutils.h"
 #include "tilemancer/text.h"
 #include "tilemancer/texture.h"
 #include "tilemancer/undoredo.h"
@@ -69,29 +70,18 @@ void initLua() {
 
 static string executable_path() {
   char cwd[1024];
-  uint32_t size = sizeof(cwd);
-#ifdef _WIN32
-  GetModuleFileName(NULL, cwd, size);
-#elif defined(__APPLE__)
-  _NSGetExecutablePath(cwd, &size);
-#else
-  size_t readSize = readlink("/proc/self/exe", cwd, size);
-  if (readSize <= 0 || readSize == size) {
-    printf("Could not determine executable path!\n");
-    exit(1);
-  }
-  cwd[readSize] = 0;
-#endif
+  strncpy(cwd, SDL_GetBasePath(), sizeof(cwd));
+  fixPath(cwd);
   return string(cwd);
 }
 
 void importFxs() {
   string cwd2 = executable_path();
-  cwd2.erase(cwd2.rfind('\\'));
+  cwd2.erase(cwd2.rfind('/'));
   if (cwd2.size() < 1) {
-    cwd2 = "\\Nodes";
+    cwd2 = "/Nodes";
   } else {
-    cwd2 += "\\Nodes";
+    cwd2 += "/Nodes";
   }
 
   tinydir_dir dirr;
@@ -105,7 +95,7 @@ void importFxs() {
       if (file.name[0] != '.') {
         string fn = file.name;
         if (fn.substr(fn.find_last_of(".") + 1) == "lua") {
-          string fullfn = cwd2 + "\\" + fn;
+          string fullfn = cwd2 + "/" + fn;
           lua_settop(L, 0);
           lua_pushnil(L);
           lua_setglobal(L, "init");
@@ -141,11 +131,11 @@ void importFxs() {
 
 void importPresets() {
   string cwd2 = executable_path();
-  cwd2.erase(cwd2.rfind('\\'));
+  cwd2.erase(cwd2.rfind('/'));
   if (cwd2.size() < 1) {
-    cwd2 = "\\Presets";
+    cwd2 = "/Presets";
   } else {
-    cwd2 += "\\Presets";
+    cwd2 += "/Presets";
   }
 
   tinydir_dir dirr;
@@ -159,7 +149,7 @@ void importPresets() {
       if (file.name[0] != '.') {
         string fn = file.name;
         if (fn.substr(fn.find_last_of(".") + 1) == "lua") {
-          string fullfn = cwd2 + "\\" + fn;
+          string fullfn = cwd2 + "/" + fn;
           lua_settop(L, 0);
           lua_pushnil(L);
           lua_setglobal(L, "init");

@@ -39,12 +39,13 @@ Socket::Socket() {
 Socket::~Socket() { delete b; }
 
 void exportTexSingle(const std::string& dir) {
-  const unsigned long size = texSizeX * texSizeY * 4;
+  const unsigned long size = texSizeX * texSizeY * 3;
   std::vector<unsigned char> pixels(size, 0);
   glBindTexture(GL_TEXTURE_2D, currentSocket->texture);
-#ifdef TILEMANCER_OS_WINDOWS
-  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, &pixels[0]);
-#else
+
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, &pixels[0]);
+
+/*
   std::vector<GLfloat> fpixels(size, 0.0f);
   glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, &fpixels[0]);
   for (unsigned long i = 0; i < size; i++) {
@@ -57,6 +58,7 @@ void exportTexSingle(const std::string& dir) {
     }
     pixels[0] = (Uint8)val;
   }
-#endif
-  SaveImage(dir, pixels, texSizeX, texSizeY, AlphaSave::Has);
+*/
+
+  SaveImage(dir, pixels, texSizeX, texSizeY, AlphaSave::HasNot);
 }
